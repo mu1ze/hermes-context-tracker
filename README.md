@@ -33,9 +33,21 @@ The folder must be named `context-tracker`, matching the plugin's ID. Desktop pl
 
 ### Install from Git
 
-Once this repository is hosted, open **Capabilities → Plugins → Install from Git**, paste its repository URL and select the **Desktop** target. No agent/backend installation is required. Enable **Context tracker** if it is off after installing.
+Open **Capabilities → Plugins → Install from Git**, paste this repository URL and select the **Desktop** target:
 
-Website maintainers can offer an install link using `hermes://plugin/install?repo=OWNER/REPOSITORY&enable=1`, substituting the actual published repository. A link does not bypass the app's installation confirmation.
+```text
+https://github.com/mu1ze/hermes-context-tracker
+```
+
+No agent/backend installation is required. Enable **Context tracker** if it is off after installing.
+
+Install link for websites and supported URL handlers:
+
+```text
+hermes://plugin/install?repo=mu1ze/hermes-context-tracker&enable=1
+```
+
+A link does not bypass the app's installation confirmation.
 
 ### Update or uninstall
 
