@@ -1,0 +1,28 @@
+{
+  "name": "hermes-context-tracker",
+  "version": "1.0.0",
+  "description": "A theme-aware context-window occupancy ring for Hermes Desktop.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node tests/context.test.mjs",
+    "pack": "npm pack"
+  },
+  "files": [
+    "plugin.js",
+    "README.md",
+    "LICENSE",
+    "screenshots/"
+  ],
+  "devDependencies": {
+    "@tanstack/react-query": "5.101.2",
+    "esbuild": "0.28.1",
+    "playwright": "1.62.1",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  }
+}
