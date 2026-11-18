@@ -29,7 +29,7 @@ const result = await build({
           namespace: "fixture",
         }));
         b.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
-          contents: `import React from 'react';import {Popover as P} from 'radix-ui';export const Popover=P.Root;export const PopoverTrigger=P.Trigger;export const PopoverContent=({children,...props})=>React.createElement(P.Portal,null,React.createElement(P.Content,props,children));export const Button=props=>React.createElement('button',props);export {useQuery,useQueryClient} from '@tanstack/react-query';export const host=window.host;export const TITLEBAR_AREAS={left:'titleBar.left'};export const useValue=a=>React.useSyncExternalStore(a.subscribe,a.get);export function Tip({label,children,className}){const [open,setOpen]=React.useState(false);if(!label)return children;return React.createElement('div',{onMouseEnter:()=>setOpen(true),onMouseLeave:()=>setOpen(false),onFocus:()=>setOpen(true),onKeyDown:e=>e.key==='Escape'&&setOpen(false)},children,open&&React.createElement('div',{role:'tooltip',className:'tooltip-bubble '+(className||''),style:{position:'absolute',top:80,padding:12}},label,React.createElement('svg',{'data-slot':'tooltip-arrow',width:10,height:5},React.createElement('path',{d:'M0 0h10L5 5Z'}))));}`,
+          contents: `import React from 'react';import {Popover as P} from 'radix-ui';export const Popover=P.Root;export const PopoverTrigger=P.Trigger;export const PopoverContent=({children,...props})=>React.createElement(P.Portal,null,React.createElement(P.Content,props,children));export const Button=({size,variant,...props})=>React.createElement('button',{...props,'data-fixture-button':''});export {useQuery,useQueryClient} from '@tanstack/react-query';export const host=window.host;export const TITLEBAR_AREAS={left:'titleBar.left'};export const useValue=a=>React.useSyncExternalStore(a.subscribe,a.get);export function Tip({label,children,className}){const [open,setOpen]=React.useState(false);if(!label)return children;return React.createElement('div',{onMouseEnter:()=>setOpen(true),onMouseLeave:()=>setOpen(false),onFocus:()=>setOpen(true),onKeyDown:e=>e.key==='Escape'&&setOpen(false)},children,open&&React.createElement('div',{role:'tooltip',className:'tooltip-bubble '+(className||''),style:{position:'absolute',top:80,padding:12}},label,React.createElement('svg',{'data-slot':'tooltip-arrow',width:10,height:5},React.createElement('path',{d:'M0 0h10L5 5Z'}))));}`,
           resolveDir: base,
         }));
       },
@@ -42,7 +42,7 @@ try {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.setContent(
-    `<style>.tooltip-bubble{background:var(--ui-text-primary);color:var(--ui-bg-elevated)}.tooltip-bubble [data-slot="tooltip-arrow"]{fill:var(--ui-text-primary)}:root{--ui-text-primary:#e4e1db;--ui-text-secondary:#bdb9b1;--ui-stroke-secondary:#55514b;--ui-bg-elevated:#302d29;--ui-accent:#d0ac78;--ui-control-hover-background:#403b35}body{font:12px system-ui;background:#24221f;color:var(--ui-text-primary)}#toolbar{display:flex}</style><p>Context tracker · synthetic test fixture</p><div id="toolbar"></div>`,
+    `<style>.tooltip-bubble{background:var(--ui-text-primary);color:var(--ui-bg-elevated)}.tooltip-bubble [data-slot="tooltip-arrow"]{fill:var(--ui-text-primary)}:root{--ui-text-primary:#e4e1db;--ui-text-secondary:#bdb9b1;--ui-stroke-secondary:#55514b;--ui-bg-elevated:#302d29;--ui-accent:#d0ac78;--ui-control-hover-background:#403b35}body{font:12px system-ui;background:#24221f;color:var(--ui-text-primary)}#toolbar{display:flex}[data-fixture-button]{font:inherit;color:var(--ui-text-primary);background:var(--ui-bg-elevated);border:1px solid var(--ui-stroke-secondary);border-radius:5px;padding:4px 8px}</style><p>Context tracker · synthetic test fixture</p><div id="toolbar"></div>`,
   );
   await page.evaluate(() => {
     window.values = {
@@ -78,6 +78,7 @@ try {
         focusedUsage: atom("usage"),
         busy: atom("busy"),
         focusedSessionProfile: atom("profile"),
+        focusedSessionOwner: atom("owner"),
         gateway: atom("gateway"),
       },
       request: async (method, args) => {
@@ -111,7 +112,33 @@ try {
     .waitFor();
   assert.match(await page.getByRole("tooltip").innerText(), /100,000/);
   assert.match(await page.getByRole("tooltip").innerText(), /75,000/);
-  assert.match(await page.getByRole("tooltip").innerText(), /System prompt/);
+  const preview = page.getByRole("tooltip");
+  assert.match(await preview.innerText(), /25% full/);
+  assert.doesNotMatch(
+    await preview.innerText(),
+    /System prompt|Session usage|Compact session/,
+  );
+  await ring.click();
+  const overview = page.getByRole("dialog", { name: "Context details" });
+  await overview
+    .getByText("Session usage", { exact: true })
+    .waitFor({ timeout: 2000 });
+  assert.match(await overview.innerText(), /90,000 input · 5,000 output/);
+  assert.match(await overview.innerText(), /Fixture model/);
+  assert.equal(
+    await overview.getByText("System prompt", { exact: true }).isVisible(),
+    false,
+  );
+  await overview.getByText("What fills the window?", { exact: true }).click();
+  await overview
+    .getByText("System prompt", { exact: true })
+    .waitFor({ timeout: 2000 });
+  assert.match(await overview.innerText(), /Estimated breakdown/);
+  await page.keyboard.press("Escape");
+  await overview.waitFor({ state: "hidden" });
+  await page.mouse.move(700, 600);
+  await ring.hover();
+  await preview.waitFor();
   assert.equal(
     await page.evaluate(() => window.lastRequest.method),
     "session.context_breakdown",
@@ -165,7 +192,14 @@ try {
     window.update({
       id: "session-a",
       busy: false,
-      usage: { context_used: 25000, context_max: 100000, compressions: 2 },
+      usage: {
+        context_used: 25000,
+        context_max: 100000,
+        compressions: 2,
+        input: 90000,
+        output: 5000,
+        model: "Fixture model",
+      },
     }),
   );
   await page
@@ -251,6 +285,7 @@ try {
       color: getComputedStyle(e).color,
     }));
     assert.ok(surface.bg && surface.color);
+    assert.match(await pinnedPanel.innerText(), /90,000 input · 5,000 output/);
     await page.screenshot({
       path: path.join(screenshots, `context-tracker-pinned-${theme}.png`),
     });
@@ -428,6 +463,19 @@ try {
   console.log(
     "PASS: toggle/keyboard, offline/no-session guards, no-op, aborted, unconfirmed result and connection isolation",
   );
+  await ring.click();
+  await details.waitFor();
+  await page.evaluate(() =>
+    window.update({
+      owner: { connectionId: "different-gateway", profile: "other" },
+    }),
+  );
+  await details.waitFor({ state: "hidden", timeout: 2000 });
+  await ring.click();
+  await details.waitFor();
+  assert.equal(await compact.isDisabled(), true);
+  assert.match(await details.innerText(), /Session gateway unavailable/);
+  console.log("PASS: no mutation through a different gateway");
   assert.deepEqual(errors, []);
   console.log(
     "PASS: top-left contribution, focused-session RPC, ring occupancy, full hover details, live updates, estimates, session isolation, unknown, zero, over-capacity, dark/light rendering.",

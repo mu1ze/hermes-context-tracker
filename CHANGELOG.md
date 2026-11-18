@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Condense hover to context used, limit and headroom; separate cumulative session input/output from occupancy in the pinned panel.
+- Put estimated context categories behind a disclosure and surface actual overages without exceeding the meter scale.
+- Validate the focused conversation's gateway and profile before compaction; keep usage isolated on connection changes.
+
 ## 1.1.0
 
 - Click the ring to pin an interactive details popover; keep the hover preview.
