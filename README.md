@@ -5,8 +5,8 @@
 ![Pinned context and session usage in dark mode — synthetic data](screenshots/context-tracker-pinned-dark.png)
 
 - **Hover** for context used, capacity and remaining tokens.
-- **Click** to pin the panel and see session input/output and the current model. Click again, click outside, or press Escape to dismiss.
-- Expand **What fills the window?** for estimated context categories. Use **Compact session** to summarize older context in that conversation.
+- **Click** to pin the panel and see the current model and a split bar for session input versus output. Hover the readout or tab to it for exact token counts. Click the ring again, click outside, or press Escape to dismiss.
+- Use the chevron beside **Context window** to show estimated categories. The tracker remembers whether you left them open or closed. Use **Compact session** to summarize older context in that conversation.
 
 The ring is **current context occupancy**. Session input/output are cumulative Hermes-reported counts across model switches, not context occupancy or a per-model bill. The current model label doesn’t attribute all those tokens to that model. `?` means unavailable, not empty. The meter fill stops at 100%, but the panel still reports overages.
 
@@ -28,4 +28,4 @@ With Node.js 22+: `npm ci`, `npx playwright install chromium`, then `npm test`. 
 
 Tests run the plugin with React, React Query, Radix and a small SDK fixture. They cover the compact overview, disclosure, live and unknown states, overages, focus and gateway isolation, compaction responses, and light/dark contrast. Screenshots and compaction responses in tests are synthetic, not live account data.
 
-MIT · Independent community plugin.
+MIT · Independent community plugin. Model-family symbols are adapted from [Lobe Icons](https://github.com/lobehub/lobe-icons) (MIT), bundled locally without network requests. Unknown models keep their names without a logo.

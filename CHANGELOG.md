@@ -2,8 +2,10 @@
 
 ## Unreleased
 
+- Replace the current-model prefix with a local SVG logo for recognized model families, retaining the full model name.
+- Show session input and output as compact counts above a proportional split bar, with exact counts on hover or focus.
 - Condense hover to context used, limit and headroom; separate cumulative session input/output from occupancy in the pinned panel.
-- Put estimated context categories behind a disclosure and surface actual overages without exceeding the meter scale.
+- Put estimated context categories behind a chevron that remembers its open or closed state. Surface actual overages without exceeding the meter scale.
 - Validate the focused conversation's gateway and profile before compaction; keep usage isolated on connection changes.
 
 ## 1.1.0

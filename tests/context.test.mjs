@@ -14,7 +14,7 @@ assert.ok(
 );
 const result = await build({
   stdin: {
-    contents: `import React from 'react';import {createRoot} from 'react-dom/client';import {QueryClient,QueryClientProvider} from '@tanstack/react-query';import plugin from ${JSON.stringify(path.join(base, "plugin.js"))};window.mount=()=>{const ctx={register:c=>{window.contribution=c;createRoot(document.getElementById('toolbar')).render(React.createElement(QueryClientProvider,{client:new QueryClient()},c.render()));},onDispose:()=>{}};plugin.register(ctx);};`,
+    contents: `import React from 'react';import {createRoot} from 'react-dom/client';import {QueryClient,QueryClientProvider} from '@tanstack/react-query';import plugin from ${JSON.stringify(path.join(base, "plugin.js"))};const stored=new Map();window.mount=()=>{const root=createRoot(document.getElementById('toolbar'));const disposers=[];plugin.register({register:c=>{window.contribution=c;root.render(React.createElement(QueryClientProvider,{client:new QueryClient()},c.render()));},onDispose:fn=>disposers.push(fn),storage:{get:(key,fallback)=>stored.has(key)?stored.get(key):fallback,set:(key,value)=>stored.set(key,JSON.parse(JSON.stringify(value)))}});window.unmount=()=>{root.unmount();disposers.forEach(fn=>fn());};};`,
     resolveDir: base,
   },
   bundle: true,
@@ -38,7 +38,10 @@ const result = await build({
 });
 const browser = await chromium.launch({ headless: true });
 try {
-  const page = await browser.newPage({ viewport: { width: 800, height: 650 } });
+  const page = await browser.newPage({
+    locale: "en-US",
+    viewport: { width: 800, height: 650 },
+  });
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.setContent(
@@ -50,8 +53,8 @@ try {
       usage: {
         context_used: 25000,
         context_max: 100000,
-        input: 90000,
-        output: 5000,
+        input: 48200,
+        output: 8700,
         compressions: 2,
       },
       busy: false,
@@ -84,7 +87,7 @@ try {
       request: async (method, args) => {
         window.lastRequest = { method, args };
         return {
-          model: "Fixture model",
+          model: "anthropic/claude-sonnet-4-6",
           context_used: 25000,
           context_max: 100000,
           context_percent: 25,
@@ -123,19 +126,185 @@ try {
   await overview
     .getByText("Session usage", { exact: true })
     .waitFor({ timeout: 2000 });
-  assert.match(await overview.innerText(), /90,000 input · 5,000 output/);
-  assert.match(await overview.innerText(), /Fixture model/);
+  const readout = overview.getByRole("group", {
+    name: "48,200 input tokens, 8,700 output tokens",
+  });
+  await readout.waitFor({ timeout: 2000 });
+  assert.match(await readout.innerText(), /Input\s*48\.2K\s+Output\s*8\.7K/);
+  const metricTops = await readout
+    .locator(".ctx-ring-token-metric")
+    .evaluateAll((metrics) =>
+      metrics.map((metric) => metric.getBoundingClientRect().top),
+    );
+  assert.equal(metricTops[0], metricTops[1]);
+  const split = overview.locator(".ctx-ring-token-split");
+  const shares = () =>
+    split
+      .locator("i")
+      .evaluateAll((segments) =>
+        segments.map((segment) => segment.getBoundingClientRect().width),
+      );
+  const [inputWidth, outputWidth] = await shares();
+  assert.ok(
+    Math.abs(inputWidth / (inputWidth + outputWidth) - 48200 / 56900) < 0.001,
+  );
+  assert.notEqual(
+    await split
+      .locator("i")
+      .nth(1)
+      .evaluate((el) => getComputedStyle(el).backgroundImage),
+    "none",
+  );
+  await readout.hover();
+  const exactTip = page
+    .getByRole("tooltip")
+    .filter({ hasText: "48,200 input · 8,700 output tokens" });
+  await exactTip.waitFor({ timeout: 2000 });
+  await page.mouse.move(700, 600);
+  await exactTip.waitFor({ state: "hidden" });
+  await overview.getByRole("button", { name: "Context breakdown" }).focus();
+  await page.keyboard.press("Tab");
+  await exactTip.waitFor({ timeout: 2000 });
+  await page.evaluate(() =>
+    window.update({ usage: { ...window.values.usage, input: 0 } }),
+  );
+  const usageGroup = overview.getByRole("group");
+  await usageGroup.getByText("0", { exact: true }).waitFor({ timeout: 2000 });
+  assert.deepEqual(await shares().then((widths) => widths.map((w) => w > 0)), [
+    false,
+    true,
+  ]);
+  await page.evaluate(() =>
+    window.update({ usage: { ...window.values.usage, output: 0 } }),
+  );
+  await overview
+    .getByRole("group", { name: "0 input tokens, 0 output tokens" })
+    .waitFor({ timeout: 2000 });
+  assert.equal(await split.locator("i").count(), 0);
+  await page.evaluate(() =>
+    window.update({
+      usage: { ...window.values.usage, input: undefined, output: 8700 },
+    }),
+  );
+  await overview
+    .getByRole("group", { name: "Input unavailable, 8,700 output tokens" })
+    .getByText("—", { exact: true })
+    .waitFor({ timeout: 2000 });
+  assert.equal(await split.locator("i").count(), 0);
+  await page.evaluate(() =>
+    window.update({
+      usage: { ...window.values.usage, input: undefined, output: undefined },
+    }),
+  );
+  await overview
+    .getByRole("group", { name: "Input unavailable, Output unavailable" })
+    .waitFor({ timeout: 2000 });
+  assert.equal(await usageGroup.getByText("—", { exact: true }).count(), 2);
+  await page.evaluate(() =>
+    window.update({
+      usage: { ...window.values.usage, input: 48200, output: 8700 },
+    }),
+  );
+  await readout.waitFor();
+  console.log(
+    "PASS: split-bar shares, exact hover and keyboard values, zero and unavailable counts",
+  );
+  const badge = overview.locator(".ctx-ring-model");
+  const logos = [
+    ["anthropic/claude-sonnet-4-6", "claude"],
+    ["gpt-6.2-sol", "openai"],
+    ["google/gemini-3-pro", "gemini"],
+    ["deepseek-ai/DeepSeek-V4", "deepseek"],
+    ["Qwen/Qwen3.8-27B", "qwen"],
+    ["huihui-ai/Huihui-Qwen3.8-27B-abliterated-GGUF", "qwen"],
+    ["x-ai/grok-4", "grok"],
+    ["moonshotai/kimi-k2.5", "kimi"],
+    ["mistralai/codestral-latest", "mistral"],
+    ["meta-llama/Llama-4-Scout", "meta"],
+    ["cohere/command-r-plus", "cohere"],
+    ["z-ai/glm-5", "zai"],
+    ["minimax/minimax-m2", "minimax"],
+    ["perplexity/sonar-pro", "perplexity"],
+    ["nvidia/nemotron-3", "nvidia"],
+    ["ai21/jamba-1.5", "ai21"],
+    ["custom/my-gpt-router", null],
+    ["custom/unknown-model", null],
+  ];
+  for (const [model, logo] of logos) {
+    await page.evaluate(
+      (model) => window.update({ usage: { ...window.values.usage, model } }),
+      model,
+    );
+    await badge.getByText(model, { exact: true }).waitFor({ timeout: 2000 });
+    assert.equal(await badge.innerText(), model);
+    assert.equal(await badge.locator("svg").count(), logo ? 1 : 0);
+    if (logo) {
+      assert.equal(
+        await badge.locator("svg").getAttribute("data-model-logo"),
+        logo,
+      );
+      assert.equal(
+        await badge.locator("svg").getAttribute("aria-hidden"),
+        "true",
+      );
+      assert.ok(await badge.locator("svg path").count());
+    }
+  }
+  await page.evaluate(() =>
+    window.update({ usage: { ...window.values.usage, model: undefined } }),
+  );
+  await badge
+    .getByText("anthropic/claude-sonnet-4-6", { exact: true })
+    .waitFor({ timeout: 2000 });
+  console.log(
+    "PASS: local model-family logos, plain-name fallback and session model label",
+  );
   assert.equal(
     await overview.getByText("System prompt", { exact: true }).isVisible(),
     false,
   );
-  await overview.getByText("What fills the window?", { exact: true }).click();
-  await overview
-    .getByText("System prompt", { exact: true })
-    .waitFor({ timeout: 2000 });
+  const disclosure = overview.getByRole("button", {
+    name: "Context breakdown",
+  });
+  await disclosure.waitFor({ timeout: 2000 });
+  assert.equal(await disclosure.innerText(), "");
+  assert.equal(await disclosure.getAttribute("aria-expanded"), "false");
+  assert.doesNotMatch(await overview.innerText(), /What fills the window/);
+  await disclosure.focus();
+  await page.keyboard.press("Enter");
+  const category = overview.getByText("System prompt", { exact: true });
+  await category.waitFor({ timeout: 2000 });
+  assert.equal(await disclosure.getAttribute("aria-expanded"), "true");
   assert.match(await overview.innerText(), /Estimated breakdown/);
   await page.keyboard.press("Escape");
   await overview.waitFor({ state: "hidden" });
+  await ring.click();
+  await category.waitFor({ timeout: 2000 });
+  await page.evaluate(() => {
+    window.unmount();
+    window.mount();
+  });
+  await overview.waitFor({ state: "hidden" });
+  await ring.click();
+  await category.waitFor({ timeout: 2000 });
+  assert.equal(await disclosure.getAttribute("aria-expanded"), "true");
+  await disclosure.click();
+  await category.waitFor({ state: "hidden" });
+  await page.keyboard.press("Escape");
+  await overview.waitFor({ state: "hidden" });
+  await page.evaluate(() => {
+    window.unmount();
+    window.mount();
+  });
+  await ring.click();
+  await disclosure.waitFor();
+  assert.equal(await disclosure.getAttribute("aria-expanded"), "false");
+  assert.equal(await category.isVisible(), false);
+  await page.keyboard.press("Escape");
+  await overview.waitFor({ state: "hidden" });
+  console.log(
+    "PASS: icon disclosure remembers open and closed across panel and plugin remounts",
+  );
   await page.mouse.move(700, 600);
   await ring.hover();
   await preview.waitFor();
@@ -196,9 +365,9 @@ try {
         context_used: 25000,
         context_max: 100000,
         compressions: 2,
-        input: 90000,
-        output: 5000,
-        model: "Fixture model",
+        input: 48200,
+        output: 8700,
+        model: "anthropic/claude-sonnet-4-6",
       },
     }),
   );
@@ -285,7 +454,9 @@ try {
       color: getComputedStyle(e).color,
     }));
     assert.ok(surface.bg && surface.color);
-    assert.match(await pinnedPanel.innerText(), /90,000 input · 5,000 output/);
+    await pinnedPanel
+      .getByRole("group", { name: "48,200 input tokens, 8,700 output tokens" })
+      .waitFor();
     await page.screenshot({
       path: path.join(screenshots, `context-tracker-pinned-${theme}.png`),
     });
