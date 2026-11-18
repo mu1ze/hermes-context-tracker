@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.2.0
+
+- Add the Desktop plugin manifest and catalog-compatible layout.
 
 - Replace the current-model prefix with a local SVG logo for recognized model families, retaining the full model name.
 - Show session input and output as compact counts above a proportional split bar, with exact counts on hover or focus.

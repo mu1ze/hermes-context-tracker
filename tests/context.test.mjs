@@ -7,14 +7,14 @@ import { chromium } from "playwright";
 const base = fileURLToPath(new URL("../", import.meta.url));
 const screenshots = path.join(base, "screenshots");
 await mkdir(screenshots, { recursive: true });
-const source = await readFile(`${base}/plugin.js`, "utf8").catch(() => null);
+const source = await readFile(`${base}/desktop/plugin.js`, "utf8").catch(() => null);
 assert.ok(
   source,
   "Context tracker plugin must exist and contribute a top-left context ring",
 );
 const result = await build({
   stdin: {
-    contents: `import React from 'react';import {createRoot} from 'react-dom/client';import {QueryClient,QueryClientProvider} from '@tanstack/react-query';import plugin from ${JSON.stringify(path.join(base, "plugin.js"))};const stored=new Map();window.mount=()=>{const root=createRoot(document.getElementById('toolbar'));const disposers=[];plugin.register({register:c=>{window.contribution=c;root.render(React.createElement(QueryClientProvider,{client:new QueryClient()},c.render()));},onDispose:fn=>disposers.push(fn),storage:{get:(key,fallback)=>stored.has(key)?stored.get(key):fallback,set:(key,value)=>stored.set(key,JSON.parse(JSON.stringify(value)))}});window.unmount=()=>{root.unmount();disposers.forEach(fn=>fn());};};`,
+    contents: `import React from 'react';import {createRoot} from 'react-dom/client';import {QueryClient,QueryClientProvider} from '@tanstack/react-query';import plugin from ${JSON.stringify(path.join(base, "desktop", "plugin.js"))};const stored=new Map();window.mount=()=>{const root=createRoot(document.getElementById('toolbar'));const disposers=[];plugin.register({register:c=>{window.contribution=c;root.render(React.createElement(QueryClientProvider,{client:new QueryClient()},c.render()));},onDispose:fn=>disposers.push(fn),storage:{get:(key,fallback)=>stored.has(key)?stored.get(key):fallback,set:(key,value)=>stored.set(key,JSON.parse(JSON.stringify(value)))}});window.unmount=()=>{root.unmount();disposers.forEach(fn=>fn());};};`,
     resolveDir: base,
   },
   bundle: true,
@@ -45,7 +45,7 @@ try {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.setContent(
-    `<style>.tooltip-bubble{background:var(--ui-text-primary);color:var(--ui-bg-elevated)}.tooltip-bubble [data-slot="tooltip-arrow"]{fill:var(--ui-text-primary)}:root{--ui-text-primary:#e4e1db;--ui-text-secondary:#bdb9b1;--ui-stroke-secondary:#55514b;--ui-bg-elevated:#302d29;--ui-accent:#d0ac78;--ui-control-hover-background:#403b35}body{font:12px system-ui;background:#24221f;color:var(--ui-text-primary)}#toolbar{display:flex}[data-fixture-button]{font:inherit;color:var(--ui-text-primary);background:var(--ui-bg-elevated);border:1px solid var(--ui-stroke-secondary);border-radius:5px;padding:4px 8px}</style><p>Context tracker · synthetic test fixture</p><div id="toolbar"></div>`,
+    `<style>.tooltip-bubble{background:var(--ui-text-primary);color:var(--ui-bg-elevated)}.tooltip-bubble [data-slot="tooltip-arrow"]{fill:var(--foreground,var(--ui-text-primary))}:root{--ui-text-primary:#e4e1db;--ui-text-secondary:#bdb9b1;--ui-stroke-secondary:#55514b;--ui-bg-elevated:#302d29;--ui-accent:#d0ac78;--ui-control-hover-background:#403b35}body{font:12px system-ui;background:#24221f;color:var(--ui-text-primary)}#toolbar{display:flex}[data-fixture-button]{font:inherit;color:var(--ui-text-primary);background:var(--ui-bg-elevated);border:1px solid var(--ui-stroke-secondary);border-radius:5px;padding:4px 8px}</style><p>Context tracker · synthetic test fixture</p><div id="toolbar"></div>`,
   );
   await page.evaluate(() => {
     window.values = {

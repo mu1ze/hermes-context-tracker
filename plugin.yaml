@@ -1,0 +1,16 @@
+manifest_version: 2
+name: context-tracker
+version: "1.2.0"
+description: "A titlebar context ring, session token split, and user-triggered compaction for the focused Hermes Desktop chat."
+author: mu1ze
+license: MIT
+requires_hermes: ">=0.23.2"
+provides_tools: []
+provides_hooks: []
+provides_middleware: []
+requires_env: []
+python_dependencies: []
+tags:
+  - desktop
+  - context
+  - observability

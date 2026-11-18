@@ -12,15 +12,15 @@ The ring is **current context occupancy**. Session input/output are cumulative H
 
 ## Install
 
-In **Capabilities → Plugins → Install from Git**, paste `https://github.com/mu1ze/hermes-context-tracker` and choose **Desktop**. Or download a [release ZIP](https://github.com/mu1ze/hermes-context-tracker/releases) and put `plugin.js` in `$HERMES_HOME/desktop-plugins/context-tracker/` (normally `~/.hermes/desktop-plugins/context-tracker/`). If needed, use **Reload desktop plugins** in the command palette.
+In **Capabilities → Plugins → Install from Git**, paste `https://github.com/mu1ze/hermes-context-tracker` and choose **Desktop**. Or download a [release ZIP](https://github.com/mu1ze/hermes-context-tracker/releases) and copy `desktop/plugin.js` into `$HERMES_HOME/desktop-plugins/context-tracker/` (normally `~/.hermes/desktop-plugins/context-tracker/`). If needed, use **Reload desktop plugins** in the command palette.
 
-Requires Hermes Desktop with the titlebar and focused-session SDK and a gateway with `session.context_breakdown` for categories and `session.compress` for compaction. No separate backend, account, or build step. Disable it in **Capabilities → Plugins**, or remove the manually installed folder.
+Requires Hermes Desktop 0.23.2 or later and a gateway with `session.context_breakdown` for categories and `session.compress` for compaction. No separate backend, account, or build step. Disable it in **Capabilities → Plugins**, or remove the manually installed folder.
 
 ## Compaction and privacy
 
 Compaction is explicit and only targets the focused session on its owning gateway. It may use model tokens and has no undo in this plugin. The button is disabled during turns, when the session gateway cannot be reached safely, and while compaction is pending or unconfirmed. The tracker does not auto-retry this action. If a request times out, check the conversation before retrying; reloading the plugin clears its in-memory guard.
 
-The plugin reads usage metadata through the existing Desktop SDK. It does not persist conversation contents, read credentials, or call external URLs. As with other Desktop plugins, it runs with [app authority](https://hermes-agent.nousresearch.com/docs/developer-guide/desktop-plugin-sdk#security-model).
+The plugin reads usage metadata through the existing Desktop SDK. It only reads the focused session’s token and model metadata through Hermes’ gateway. It stores the breakdown’s open/closed preference locally; it does not persist conversation contents, read credentials, call third-party services, or send telemetry. It runs no shell commands or background processes. As with other Desktop plugins, it runs with [app authority](https://hermes-agent.nousresearch.com/docs/developer-guide/desktop-plugin-sdk#security-model).
 
 ## Tests
 

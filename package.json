@@ -1,6 +1,6 @@
 {
   "name": "hermes-context-tracker",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A theme-aware context-window occupancy ring for Hermes Desktop.",
   "private": true,
   "type": "module",
@@ -13,7 +13,8 @@
     "pack": "npm pack"
   },
   "files": [
-    "plugin.js",
+    "desktop/plugin.js",
+    "plugin.yaml",
     "README.md",
     "LICENSE",
     "screenshots/"
